@@ -22,7 +22,7 @@ my.FacetViewer = Backbone.View.extend({
       {{#facets}} \
       <div class="facet-summary" data-facet="{{id}}"> \
         <h3> \
-          {{id}} \
+          {{label}} \
         </h3> \
         <ul class="facet-items"> \
         {{#terms}} \
@@ -41,6 +41,7 @@ my.FacetViewer = Backbone.View.extend({
     'click .js-facet-filter': 'onFacetFilter'
   },
   initialize: function(model) {
+    this.labels = this.options.labels;
     _.bindAll(this, 'render');
     this.listenTo(this.model.facets, 'all', this.render);
     this.listenTo(this.model.fields, 'all', this.render);
@@ -50,12 +51,17 @@ my.FacetViewer = Backbone.View.extend({
     var tmplData = {
       fields: this.model.fields.toJSON()
     };
+    var labels = this.labels;
     tmplData.facets = _.map(this.model.facets.toJSON(), function(facet) {
       if (facet._type === 'date_histogram') {
         facet.entries = _.map(facet.entries, function(entry) {
           entry.term = new Date(entry.time).toDateString();
           return entry;
         });
+      }
+      facet.label = facet.id;
+      if (_.contains(_.keys(labels), facet.id)) {
+          facet.label = labels[facet.id];
       }
       return facet;
     });
@@ -70,6 +76,7 @@ my.FacetViewer = Backbone.View.extend({
   },
   onHide: function(e) {
     e.preventDefault();
+    console.log("hiding the facet :(");
     this.$el.hide();
   },
   onFacetFilter: function(e) {

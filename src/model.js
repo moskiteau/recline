@@ -33,12 +33,19 @@ my.Dataset = Backbone.Model.extend({
       updates: [],
       creates: []
     };
-    this.facets = new my.FacetList();
+    this.facets = new my.FacetList();   
+    this.aggs = new my.AggregationList();
+    this.boostFields = new my.BoostFieldList(); 
     this.recordCount = null;
     this.queryState = new my.Query();
     this.queryState.bind('change facet:add', function () {
       self.query(); // We want to call query() without any arguments.
     });
+    this.queryState.bind('change boostField:add', function () {
+      self.query(); // We want to call query() without any arguments.
+    });
+
+
     // store is what we query and save against
     // store will either be the backend or be a memory store if Backend fetch
     // tells us to use memory store
@@ -413,6 +420,8 @@ my.Field = Backbone.Model.extend({
       this.renderer = this.defaultRenderers[this.get('type')];
     }
     this.facets = new my.FacetList();
+    this.aggs = new my.AggregationList();
+    this.boostFields = new my.BoostFieldList();
   },
   _typeMap: {
     'text': 'string',
@@ -480,8 +489,10 @@ my.Query = Backbone.Model.extend({
       size: 100,
       from: 0,
       q: '',
+      aggs: {},
       facets: {},
-      filters: []
+      filters: [],
+      boostFields: []
     };
   },
   _filterTemplates: {
@@ -550,6 +561,39 @@ my.Query = Backbone.Model.extend({
     this.set({filters: filters});
     this.trigger('change');
   },
+  clearFilters: function() {
+    this.set({filters: []});
+    this.trigger('change');
+  },
+  // ### addBoostField
+  //
+  // Add a BoostField to this query
+  //
+  // See <http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#_multi_field_2>
+  addBoostField: function(fieldId, _boost, silent) {
+    var boostFields = this.get('boostFields');
+    if (_.contains(_.keys(boostFields), fieldId)) {
+      return;
+    }
+    var field ={
+      field: fieldId
+    };
+    if (!_.isUndefined(_boost)) {
+      field.boost = _boost;
+    }
+    boostFields.push(field);
+    this.set({boostFields: boostFields}, {silent: true});
+    if (!silent) {
+      this.trigger('boostFields:add', this);
+    }
+  },
+  clearBoostFields: function() {
+    var boostFields = this.get('boostFields');
+    _.each(_.keys(boostFields), function(fieldId) {
+      delete boostFields[fieldId];
+    });
+    this.trigger('boostField:remove', this);
+  },
   // ### addFacet
   //
   // Add a Facet to this query
@@ -572,12 +616,12 @@ my.Query = Backbone.Model.extend({
       this.trigger('facet:add', this);
     }
   },
-  addHistogramFacet: function(fieldId) {
+  addHistogramFacet: function(fieldId, interval) {
     var facets = this.get('facets');
     facets[fieldId] = {
       date_histogram: {
         field: fieldId,
-        interval: 'day'
+        interval: interval
       }
     };
     this.set({facets: facets}, {silent: true});
@@ -604,10 +648,51 @@ my.Query = Backbone.Model.extend({
   // multiple facets
   refreshFacets: function() {
     this.trigger('facet:add', this);
-  }
-
+  },
+  // ### addFacet
+  //
+  // Add a Facet to this query
+  //
+  // See <http://www.elasticsearch.org/guide/reference/api/search/facets/>
+  addTermAggregation: function(fieldId, size, silent) {
+    var aggs = this.get('aggs');
+    // Assume id and fieldId should be the same (TODO: this need not be true if we want to add two different type of facets on same field)
+    if (_.contains(_.keys(aggs), fieldId)) {
+      return;
+    }
+    aggs[fieldId] = {
+      terms: { field: fieldId }
+    };
+    if (!_.isUndefined(size)) {
+      aggs[fieldId].terms.size = size;
+    }
+    this.set({aggs: aggs}, {silent: true});
+    if (!silent) {
+      this.trigger('aggs:add', this);
+    }
+  },
 });
 
+
+// ## <a id="facet">A Aggregation (Result)</a>
+my.Aggregation = Backbone.Model.extend({
+  constructor: function Aggregation() {
+    Backbone.Model.prototype.constructor.apply(this, arguments);
+  },
+  defaults: function() {
+    return {
+      buckets: []
+    };
+  }
+});
+
+// ## A Collection/List of aggregators
+my.AggregationList = Backbone.Collection.extend({
+  constructor: function AggregationList() {
+    Backbone.Collection.prototype.constructor.apply(this, arguments);
+  },
+  model: my.Aggregation
+});
 
 // ## <a id="facet">A Facet (Result)</a>
 my.Facet = Backbone.Model.extend({
@@ -631,6 +716,27 @@ my.FacetList = Backbone.Collection.extend({
     Backbone.Collection.prototype.constructor.apply(this, arguments);
   },
   model: my.Facet
+});
+
+// ## <a id="BoostField">A BoostField (Result)</a>
+my.BoostField = Backbone.Model.extend({
+  constructor: function BoostField() {
+    Backbone.Model.prototype.constructor.apply(this, arguments);
+  },
+  defaults: function() {
+    return {
+      field: '',
+      boost: 0
+    };
+  }
+});
+
+// ## A Collection/List of BoostFields
+my.BoostFieldList = Backbone.Collection.extend({
+  constructor: function BoostFieldList() {
+    Backbone.Collection.prototype.constructor.apply(this, arguments);
+  },
+  model: my.BoostField
 });
 
 // ## Object State
