@@ -36,7 +36,6 @@ my.FacetViewer = Backbone.View.extend({
       {{/facets}} \
     </div> \
   ',
-
   events: {
     'click .js-facet-filter': 'onFacetFilter'
   },

@@ -22,7 +22,6 @@ my.Pager = Backbone.View.extend({
     'click .action-pagination-update': 'onPaginationUpdate',
     'change input': 'onFormSubmit'
   },
-
   initialize: function() {
     _.bindAll(this, 'render');
     this.listenTo(this.model.queryState, 'change', this.render);
