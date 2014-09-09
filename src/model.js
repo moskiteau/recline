@@ -26,6 +26,7 @@ this.recline.Model = this.recline.Model || {};
                     this.backend = recline.Backend.Memory;
                 }
             }
+                      
             this.fields = new my.FieldList();
             this.records = new my.RecordList();
             this._changes = {
@@ -38,6 +39,9 @@ this.recline.Model = this.recline.Model || {};
             this.boostFields = new my.BoostFieldList(); 
             this.recordCount = null;
             this.queryState = new my.Query();
+            if(this.get('queryType')) {
+                this.queryState = new my.Query({ 'queryType': this.get('queryType') });
+            }  
             this.queryState.bind('change facet:add', function () {
                 self.query(); // We want to call query() without any arguments.
             });
@@ -204,6 +208,7 @@ this.recline.Model = this.recline.Model || {};
             this.trigger('query:start');
 
             if (queryObj) {
+                queryObj.queryType = this.get('queryType');                
                 var attributes = queryObj;
                 if (queryObj instanceof my.Query) {
                     attributes = queryObj.toJSON();
@@ -250,21 +255,36 @@ this.recline.Model = this.recline.Model || {};
                 self.facets.reset(facets);
             }
             if (queryResult.aggregations) {
+                //
                 var aggregations = _.map(queryResult.aggregations, function(aggResult, aggId) {
                     aggResult.key = aggId;
                     var id = aggId.replace(/\_/g, ".");
                     aggResult.id = id;
                     var selected = self.queryState.getSelectedAggregation(id);
                     if(selected) {
-                      aggResult.selected = selected;
-                    }                                        
+                        aggResult.selected = selected;
+                    }
+                    aggResult.buckets = self.selectInBuckets(aggResult);
                     var agg = new my.Aggregation(aggResult)
                     return agg;
-                });
+                });                
                 self.aggs.reset(aggregations);
             }            
         },
 
+        selectInBuckets: function(agg) {
+            var self = this;
+            var filters = self.queryState.get('filters');
+            var buckets = _.map(agg.buckets, function(bucket, index) {
+                _.each(filters, function(filter) {                    
+                    if(filter.type == "term" && bucket.key == filter.term) {
+                        bucket.selected = true;
+                    }
+                });
+                return bucket;
+            });
+            return buckets;
+        },
         toTemplateJSON: function() {
             var data = this.toJSON();
             data.recordCount = this.recordCount;
@@ -514,9 +534,11 @@ this.recline.Model = this.recline.Model || {};
         },
         defaults: function() {
             return {
+                queryType: '',
                 size: 100,
                 from: 0,
-                q: '',
+                q: '',       
+                bool:{},        
                 aggs: {},
                 facets: {},
                 filters: [],
@@ -604,6 +626,19 @@ this.recline.Model = this.recline.Model || {};
                     filters: filters
                 });
             }
+            this.trigger('change');
+        },
+        removeFilterById: function(filterId) {
+            var filters = this.get('filters');
+            _.each(filters, function(filter, idx) {
+                if (filter.field == filterId) {
+                    delete filters[idx];
+                }
+            });
+
+            this.set({
+                filters: _.compact(filters)
+            });            
             this.trigger('change');
         },
         clearFilters: function() {
@@ -796,6 +831,18 @@ this.recline.Model = this.recline.Model || {};
                 silent: true
             });
         },
+        unSelectAggregation: function(fieldId) {
+            var key = fieldId.replace(/\./g, "_");  
+            var aggs = this.get('aggs');    
+            if (!_.contains(_.keys(aggs), key)) {
+                return;
+            }
+
+            delete aggs[key].selected
+            this.set({
+                aggs: aggs
+            });
+        },
         getSelectedAggregation: function(fieldId) {
             var key = fieldId.replace(/\./g, "_");            
             var filters = this.get('filters'); 
@@ -804,9 +851,29 @@ this.recline.Model = this.recline.Model || {};
               if(filter.field == fieldId) {                
                 selected = filter;
               }
-            });        
+            });
             return selected;
         },
+        removeAggregation: function(aggId) {
+            var key = aggId.replace(/\./g, "_");
+            var aggs = this.get('aggs');
+            _.each(_.keys(aggs), function(fieldId) {
+                if(fieldId == key) {
+                    delete aggs[fieldId];
+                }
+            });
+            this.trigger('aggs:remove', this);
+        },
+        clearAggregations: function() {
+            var aggs = this.get('aggs');
+            _.each(_.keys(aggs), function(fieldId) {
+                delete aggs[fieldId];
+            });
+            this.trigger('aggs:remove', this);
+        },
+        refreshAggregations: function() {
+            this.trigger('aggs:add', this);
+        }
     });
 
     // ## <a id="facet">A Aggregation (Result)</a>
@@ -824,6 +891,8 @@ this.recline.Model = this.recline.Model || {};
               this.set({_type: "date_range"});
             } else if(_.contains(keys, "from") || _.contains(keys, "to")) {
               this.set({_type: "range"});
+            } else if(_.contains(keys, "top_hits")) {
+                this.set({_type: "top_hits"});
             }
           }          
         },
@@ -841,7 +910,7 @@ this.recline.Model = this.recline.Model || {};
         constructor: function AggregationList() {
             Backbone.Collection.prototype.constructor.apply(this, arguments);
         },
-        model: my.Aggregation
+        model: my.Aggregation,
     });
 
     // ## <a id="facet">A Facet (Result)</a>
