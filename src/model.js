@@ -38,10 +38,12 @@ this.recline.Model = this.recline.Model || {};
             this.aggs = new my.AggregationList();
             this.boostFields = new my.BoostFieldList(); 
             this.recordCount = null;
-            this.queryState = new my.Query();
+            
             if(this.get('queryType')) {
                 this.queryState = new my.Query({ 'queryType': this.get('queryType') });
-            }  
+            } else {
+                this.queryState = new my.Query();
+            }
             this.queryState.bind('change facet:add', function () {
                 self.query(); // We want to call query() without any arguments.
             });
