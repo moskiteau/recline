@@ -337,6 +337,9 @@ var ES = {};
                 if (aggs[key].selected) {
                     delete aggs[key].selected;
                 }
+                if (aggs[key]._type) {
+                    delete aggs[key]._type;
+                }
             });
             return aggs;
         },
