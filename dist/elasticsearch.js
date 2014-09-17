@@ -352,7 +352,7 @@ var ES = {};
                 var highlights = {
                     number_of_fragments: 0,
                     pre_tags: ["<b>"],
-                    post_tags: ["<b>"],
+                    post_tags: ["</b>"],
                     fields: {}
                 };
 
