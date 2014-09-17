@@ -36,6 +36,7 @@ this.recline.Model = this.recline.Model || {};
             };
             this.facets = new my.FacetList();   
             this.aggs = new my.AggregationList();
+            this.highlights = new my.HighlightList();
             this.boostFields = new my.BoostFieldList(); 
             this.recordCount = null;
             
@@ -471,6 +472,7 @@ this.recline.Model = this.recline.Model || {};
             }
             this.facets = new my.FacetList();
             this.aggs = new my.AggregationList();
+            this.highlights = new my.HighlightList();
             this.boostFields = new my.BoostFieldList();
         },
         _typeMap: {
@@ -542,6 +544,7 @@ this.recline.Model = this.recline.Model || {};
                 q: '',       
                 bool:{},        
                 aggs: {},
+                highlights: [],
                 facets: {},
                 filters: [],
                 boostFields: []
@@ -681,6 +684,29 @@ this.recline.Model = this.recline.Model || {};
                 delete boostFields[fieldId];
             });
             this.trigger('boostField:remove', this);
+        },
+        // ### addHightlightField
+        //
+        // Add a Hightlight to this query
+        //
+        addHightlightField: function(fieldId, silent) {
+            var highlights = this.get('highlights');
+            console.log("highlights: " + JSON.stringify(highlights) + ' -> ' + fieldId);
+            if (_.contains(_.keys(highlights), fieldId)) {
+                return; //already highlighted...
+            }
+            var field ={
+                field: fieldId
+            };
+            highlights.push(field);
+            this.set({
+                highlights: highlights
+            }, {
+                silent: true
+            });
+            if (!silent) {
+                this.trigger('highlights:add', this);
+            }
         },
         // ### addFacet
         //
@@ -937,6 +963,26 @@ this.recline.Model = this.recline.Model || {};
             Backbone.Collection.prototype.constructor.apply(this, arguments);
         },
         model: my.Facet
+    });
+
+    // ## <a id="facet">A Highlight (Result)</a>
+    my.Highlight = Backbone.Model.extend({
+        constructor: function Highlight() {
+            Backbone.Model.prototype.constructor.apply(this, arguments);
+        },
+        defaults: function() {
+            return {
+                field: ''
+            };
+        }
+    });
+
+    // ## A Collection/List of Highlights
+    my.HighlightList = Backbone.Collection.extend({
+        constructor: function HighlightList() {
+            Backbone.Collection.prototype.constructor.apply(this, arguments);
+        },
+        model: my.Highlight,
     });
 
     // ## <a id="BoostField">A BoostField (Result)</a>

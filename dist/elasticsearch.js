@@ -154,6 +154,15 @@ var ES = {};
                     //qStr.multi_match.analyzer = "custom_analyzer_en";
                     qStr.multi_match.auto_generate_phrase_queries = true;*/
                 query.bool.must.push(qStr);
+
+                if(queryInfo.highlights) {
+                    var highlights = {
+                        number_of_fragments: 0,
+                        pre_tags: [ "<b>" ],
+                        post_tags: [ "<b>" ],
+                        fields: []
+                    };
+                }
                 //query.min_score = 0.99;
             } else if (queryInfo.ids) {
                 query = {
@@ -361,6 +370,9 @@ var ES = {};
             }
             if (esQuery.boostFields) {
                 delete esQuery.boostFields;
+            }
+            if (esQuery.highlights) {
+                delete esQuery.highlights;
             }
             if (esQuery.bool) {
                 delete esQuery.bool;
