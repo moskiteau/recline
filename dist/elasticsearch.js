@@ -116,7 +116,7 @@ var ES = {};
             var query;
 
             var booleanize = false;
-            if (queryInfo.q) {                
+            if (queryInfo.q) {
                 booleanize = true;
                 var qStr = {
                     query_string: {
@@ -154,15 +154,6 @@ var ES = {};
                     //qStr.multi_match.analyzer = "custom_analyzer_en";
                     qStr.multi_match.auto_generate_phrase_queries = true;*/
                 query.bool.must.push(qStr);
-
-                if(queryInfo.highlights) {
-                    var highlights = {
-                        number_of_fragments: 0,
-                        pre_tags: [ "<b>" ],
-                        post_tags: [ "<b>" ],
-                        fields: []
-                    };
-                }
                 //query.min_score = 0.99;
             } else if (queryInfo.ids) {
                 query = {
@@ -234,7 +225,8 @@ var ES = {};
             } else {
                 out = {};
                 out = query;
-            }
+            }            
+
             return out;
         },
 
@@ -352,6 +344,24 @@ var ES = {};
             });
             return aggs;
         },
+
+        this._normalizeHighlight = function(queryObj) {
+            var self = this;
+            var queryInfo = (queryObj && queryObj.toJSON) ? queryObj.toJSON() : _.extend({}, queryObj);
+            if (queryInfo.q && queryInfo.highlights) {
+                var highlights = {
+                    number_of_fragments: 0,
+                    pre_tags: ["<b>"],
+                    post_tags: ["<b>"],
+                    fields: {}
+                };
+
+                _.each(queryInfo.highlights, function(highlight) {
+                    highlights.fields[highlight.field] = { 'force_source' : true }
+                });
+                return highlights;
+            }
+        },
         // ### query
         // @return deferred supporting promise API
         this.query = function(queryObj) {
@@ -372,6 +382,7 @@ var ES = {};
                 delete esQuery.boostFields;
             }
             if (esQuery.highlights) {
+                esQuery.highlight = this._normalizeHighlight(queryObj);
                 delete esQuery.highlights;
             }
             if (esQuery.bool) {
@@ -533,6 +544,9 @@ recline.Backend.ElasticSearch = recline.Backend.ElasticSearch || {};
             out.hits = _.map(results.hits.hits, function(hit) {
                 if (!('id' in hit._source) && hit._id) {
                     hit._source.id = hit._id;
+                }
+                if(hit.highlight) {
+                    hit._source.highlight = hit.highlight;
                 }
                 return hit._source;
             });

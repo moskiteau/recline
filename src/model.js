@@ -691,7 +691,6 @@ this.recline.Model = this.recline.Model || {};
         //
         addHightlightField: function(fieldId, silent) {
             var highlights = this.get('highlights');
-            console.log("highlights: " + JSON.stringify(highlights) + ' -> ' + fieldId);
             if (_.contains(_.keys(highlights), fieldId)) {
                 return; //already highlighted...
             }
