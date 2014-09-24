@@ -553,8 +553,18 @@ recline.Backend.ElasticSearch = recline.Backend.ElasticSearch || {};
             if (results.facets) {
                 out.facets = results.facets;
             }
-            if (results.aggregations) {
-                out.aggregations = results.aggregations;
+            if (results.aggregations) {                //not really elegant, but ES doesnt return the type...    
+                out.aggregations = {};            
+                _.each(results.aggregations, function(bucket, key) {
+                    _.each(queryObj.aggs, function(queryObjbucket, queryObjkey) {
+                        if(queryObjkey == key) {
+                            _.each(_.keys(queryObjbucket), function(type) {
+                                bucket._type = type;
+                            });                            
+                        }
+                    });        
+                    out.aggregations[key] = bucket;
+                });
             }
             dfd.resolve(out);
         }).fail(function(errorObj) {

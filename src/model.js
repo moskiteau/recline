@@ -646,6 +646,18 @@ this.recline.Model = this.recline.Model || {};
             });            
             this.trigger('change');
         },
+        removeFilterByIdAndValue: function(filterId, value, type) {            
+            var filters = this.get('filters');
+            _.each(filters, function(filter, idx) {
+                if (filter.field == filterId && filter[type] == value) {
+                    delete filters[idx];
+                }
+            });
+            this.set({
+                filters: _.compact(filters)
+            });            
+            this.trigger('change');
+        },
         clearFilters: function() {
             this.set({
                 filters: []
@@ -835,7 +847,7 @@ this.recline.Model = this.recline.Model || {};
                     "ranges": ranges
                 }        
             };    
-            aggs[key]._type = "date_range";
+            aggs[key]._type = "range";
             this.set({
                 aggs: aggs
             }, {
@@ -858,8 +870,29 @@ this.recline.Model = this.recline.Model || {};
                 silent: true
             });
         },
-        unSelectAggregation: function(fieldId) {
+        unSelectAggregationByValue: function(fieldId, value) {
             var key = fieldId.replace(/\./g, "_");  
+            //console.log("remove key " + key + " / " + value);
+            var aggs = this.get('aggs');    
+            if (!_.contains(_.keys(aggs), key)) {
+                return;
+            }
+
+            _.each(aggs, function(agg, i) {
+                //console.log(i + ": " + JSON.stringify(agg));
+                if(agg.value == value) {
+
+                }                
+            });
+            delete aggs[key].selected
+            this.set({
+                aggs: aggs
+            });
+        },
+        unSelectAggregation: function(fieldId) {
+            console.log("remove " + fieldId);
+            var key = fieldId.replace(/\./g, "_");  
+            console.log("remove key " + key);
             var aggs = this.get('aggs');    
             if (!_.contains(_.keys(aggs), key)) {
                 return;
@@ -881,7 +914,7 @@ this.recline.Model = this.recline.Model || {};
             });
             return selected;
         },
-        removeAggregation: function(aggId) {
+        removeAggregation: function(aggId) {            
             var key = aggId.replace(/\./g, "_");
             var aggs = this.get('aggs');
             _.each(_.keys(aggs), function(fieldId) {
@@ -908,20 +941,7 @@ this.recline.Model = this.recline.Model || {};
         constructor: function Aggregation() {
             Backbone.Model.prototype.constructor.apply(this, arguments);
         },
-        initialize: function() {
-          var buckets = this.get('buckets');
-          var id = this.get('id');
-          var item = _.first(buckets);  
-          if(!_.isUndefined(item)) {
-            var keys = _.keys(item);
-            if(_.contains(keys, "from_as_string") || _.contains(keys, "to_as_string")) {
-              this.set({_type: "date_range"});
-            } else if(_.contains(keys, "from") || _.contains(keys, "to")) {
-              this.set({_type: "range"});
-            } else if(_.contains(keys, "top_hits")) {
-                this.set({_type: "top_hits"});
-            }
-          }          
+        initialize: function() {               
         },
         defaults: function() {
             return {
