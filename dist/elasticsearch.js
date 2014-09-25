@@ -229,7 +229,6 @@ var ES = {};
 
             return out;
         },
-
         // convert from Recline sort structure to ES form
         // http://www.elasticsearch.org/guide/reference/api/search/sort.html
         this._normalizeSort = function(sort) {
@@ -267,7 +266,6 @@ var ES = {};
                 if (!_.isUndefined(filter.to) && !isNaN(filter.to) && filter.to) {
                     out.range[filter.field].to = filter.to;
                 }
-
                 if (_.has(filter, 'include_lower')) {
                     out.range[filter.field].include_lower = filter.include_lower;
                 }
