@@ -264,10 +264,10 @@ this.recline.Model = this.recline.Model || {};
                     var id = aggId.replace(/\_/g, ".");
                     aggResult.id = id;
                     var selected = self.queryState.getSelectedAggregation(id);
-                    if(selected) {
-                        aggResult.selected = selected;
-                    }
-                    aggResult.buckets = self.selectInBuckets(aggResult);
+                    if(selected) {                        
+                        aggResult.selected = selected;                        
+                        aggResult.buckets = self.selectInBuckets(aggResult);
+                    }                    
                     var agg = new my.Aggregation(aggResult)
                     return agg;
                 });                
